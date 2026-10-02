@@ -1,10 +1,10 @@
 # AGENTS.md - Revenda Fast
 
 ## Stack e Comandos de Execução
-- **Linguagem / Runtime:** 
-- **Instalação de Dependências:** 
-- **Execução Local:** 
-- **Execução de Testes:** 
+- **Linguagem / Runtime:** Node.js (v24.x) / JavaScript
+- **Instalação de Dependências:** `npm install`
+- **Execução Local:** `npm run dev`
+- **Execução de Testes:** `npm run test`
 
 ## Estrutura de Pastas
 - `docs/specs/`: Especificações executáveis (fonte da verdade).
