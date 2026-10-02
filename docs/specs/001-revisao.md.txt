@@ -1,0 +1,19 @@
+# Registro da Revisão Cruzada - SPEC-001
+
+- **Feature Avaliada:** Registro de Venda Parcelada e Geração de Cobrança (Revenda Fast)
+- **Equipe Avaliadora:** []
+- **Data da Revisão:** []
+
+---
+
+### 1. A spec deixa claro exatamente o que o sistema faz e o que NÃO faz sem recorrer a termos vagos?
+- **Resposta:** 
+- **Apontamentos:** Nenhuma ressalva.
+
+### 2. Os critérios de aceite são binários, observáveis e livres de qualquer termo de implementação técnica?
+- **Resposta:** 
+- **Apontamentos:** Nenhuma ressalva.
+
+### 3. A tabela de exemplos cobre o caso feliz, as bordas críticas e os bloqueios de erro?
+- **Resposta:** 
+- **Apontamentos:** Nenhuma ressalva.

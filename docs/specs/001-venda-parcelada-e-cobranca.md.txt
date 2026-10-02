@@ -1,0 +1,145 @@
+# SPEC-001: Registro de Venda Parcelada e Geração de Cobrança
+
+- **Projeto:** Revenda Fast
+- **Responsáveis:** Breno Habib Dhaher Muhammad Oliveira, Henrique Thomaz Landim Ruffato, Luiz Eduardo Santos Silva, Maria Giovanna Fernandes Lima
+- **Status:** Aprovado para Implementação
+- **Data de Referência:** 02/10/2026
+
+---
+
+## 1. Objetivo
+
+Permitir que a revendedora registre uma venda a prazo com cronograma de parcelas e gere um texto padronizado de cobrança com link de redirecionamento para o aplicativo WhatsApp, assegurando o controle de valores pendentes sem duplicidade de digitação.
+
+---
+
+## 2. Escopo
+
+### 2.1 O que entra
+1. Cadastro simples da cliente contendo nome e número de telefone celular.
+2. Registro de venda com valor monetário total, descrição textual dos itens, quantidade de parcelas (entre 1 e 12), intervalo de vencimento (quinzenal ou mensal) e data do primeiro vencimento.
+3. Cálculo e exibição do cronograma com datas de vencimento e valores individuais de cada parcela.
+4. Classificação visual e lógica do estado de cada parcela em: `Pendente`, `Paga` ou `Atrasada`.
+5. Ação manual da revendedora para marcar uma parcela individual como `Paga`.
+6. Geração de texto pré-formatado de cobrança contendo nome da cliente, valor da parcela e data de vencimento.
+7. Disparo de link `wa.me` que abre a conversa no WhatsApp com o texto pré-formatado preenchido para envio.
+
+### 2.2 O que NÃO entra
+1. Integração com a API oficial do WhatsApp Business ou envio automatizado de mensagens sem a confirmação manual da revendedora.
+2. Integração com gateways de pagamento, emissão de boletos bancários ou conciliação bancária automática via PIX.
+3. Baixa automática em controle de estoque ou integração com catálogos de fornecedores (Avon, Natura ou semijoias).
+4. Aplicação de juros compostos, multas moratórias ou cálculos de correção monetária sobre parcelas vencidas.
+5. Cadastro de múltiplos usuários com níveis de permissão distintos.
+6. Importação ou exportação de dados em formatos de planilhas.
+
+---
+
+## 3. Atores
+
+- **Revendedora:** Única usuária do sistema responsável por cadastrar clientes, lançar vendas, marcar quitações e acionar o envio de mensagens de cobrança.
+
+---
+
+## 4. Dados
+
+### 4.1 Entradas da Venda
+- **Nome da Cliente:** Texto com no mínimo 3 caracteres e no máximo 100 caracteres. Campo obrigatório.
+- **Telefone Celular:** Sequência numérica com exatamente 11 dígitos no formato DDD + 9 dígitos (exemplo: `64999998888`). Campo obrigatório.
+- **Descrição dos Itens:** Texto com no mínimo 3 caracteres e no máximo 255 caracteres. Campo obrigatório.
+- **Valor Total da Venda:** Valor numérico em moeda corrente (BRL), positivo, com duas casas decimais, maior ou igual a R$ 1,00 e menor ou igual a R$ 50.000,00. Campo obrigatório.
+- **Quantidade de Parcelas:** Número inteiro entre 1 e 12. Campo obrigatório.
+- **Intervalo entre Parcelas:** Opção exclusiva entre `Quinzenal` (15 dias corridos) ou `Mensal` (mesmo dia do mês subsequente). Campo obrigatório.
+- **Data do Primeiro Vencimento:** Data válida no calendário Gregoriano, igual ou posterior à data do registro da venda. Campo obrigatório.
+
+### 4.2 Saídas da Venda
+- **Identificador Único da Venda:** Código alfanumérico gerado pelo sistema.
+- **Saldo Devedor da Venda:** Soma dos valores das parcelas com estado diferente de `Paga`.
+- **Lista de Parcelas:** Cada parcela contendo:
+  - Número de ordem da parcela (exemplo: 1 de 3).
+  - Data de vencimento.
+  - Valor nominal da parcela em moeda corrente (BRL).
+  - Estado da parcela: `Pendente`, `Paga` ou `Atrasada`.
+- **Link de Cobrança WhatsApp:** URL estruturada no formato `https://wa.me/55<telefone>?text=<mensagem_codificada>`.
+
+---
+
+## 5. Regras de Negócio
+
+- **RN-01 (Divisão e Distribuição de Centavos):** O valor da venda é dividido pelo número de parcelas truncado em duas casas decimais. A diferença de centavos resultante do arredondamento é somada integralmente na primeira parcela, garantindo que a soma de todas as parcelas seja exatamente igual ao valor total da venda.
+- **RN-02 (Cálculo do Vencimento Mensal em Dias Inexistentes):** Quando o intervalo for `Mensal` e o dia do primeiro vencimento não existir no mês subsequente (exemplo: dia 31 em um mês de 30 dias ou em fevereiro), a data de vencimento da respectiva parcela é fixada no último dia corrido daquele mês.
+- **RN-03 (Cálculo do Vencimento Quinzenal):** Quando o intervalo for `Quinzenal`, cada vencimento subsequente ocorre exatamente 15 dias corridos após o vencimento da parcela imediatamente anterior.
+- **RN-04 (Transição de Estado das Parcelas):** Toda parcela inicia no estado `Pendente`. Se a data do sistema for posterior à data de vencimento e a parcela não estiver no estado `Paga`, o estado passa automaticamente para `Atrasada`.
+- **RN-05 (Irreversibilidade de Parcela Paga por Fluxo Normal):** Ao confirmar o recebimento de uma parcela, seu estado torna-se `Paga`. A parcela não transita para `Atrasada` após ser marcada como `Paga`.
+- **RN-06 (Formatação da Mensagem de Cobrança):** A mensagem gerada para o WhatsApp segue o seguinte padrão de texto:
+  `"Olá, {Nome da Cliente}! Passando para lembrar da parcela {numero}/{total} da sua compra ({Descricao dos Itens}), no valor de R$ {Valor da Parcela}, com vencimento em {Data de Vencimento}. Posso te enviar a chave PIX?"`
+- **RN-07 (Sanitização do Telefone para Link):** O link de redirecionamento utiliza o prefixo de país `55`, seguido do DDD e dos 9 dígitos numéricos, sem espaços, traços, parênteses ou caracteres especiais.
+
+---
+
+## 6. Tabela de Exemplos da Regra Principal (RN-01, RN-02 e RN-03)
+
+| Identificador do Caso | Tipo do Caso | Valor Total (R$) | Qtd. Parcelas | 1º Vencimento | Intervalo | Resultado Esperado das Parcelas |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **TC-01** | Caso Feliz | R$ 150,00 | 3 | 10/10/2026 | Mensal | P1: R$ 50,00 (10/10/2026)<br>P2: R$ 50,00 (10/11/2026)<br>P3: R$ 50,00 (10/12/2026) |
+| **TC-02** | Caso de Borda (Dízima/Centavos) | R$ 100,00 | 3 | 15/10/2026 | Mensal | P1: R$ 33,34 (15/10/2026)<br>P2: R$ 33,33 (15/11/2026)<br>P3: R$ 33,33 (15/12/2026) |
+| **TC-03** | Caso de Borda (Fim de Mês) | R$ 200,00 | 2 | 31/01/2027 | Mensal | P1: R$ 100,00 (31/01/2027)<br>P2: R$ 100,00 (28/02/2027) |
+| **TC-04** | Caso de Borda (Quinzenal) | R$ 100,00 | 2 | 10/10/2026 | Quinzenal | P1: R$ 50,00 (10/10/2026)<br>P2: R$ 50,00 (25/10/2026) |
+| **TC-05** | Caso de Erro (Valor Inválido) | R$ 0,00 | 3 | 10/10/2026 | Mensal | Bloqueio do registro com a mensagem: "O valor total deve ser maior ou igual a R$ 1,00." |
+| **TC-06** | Caso de Erro (Parcelas Inválidas)| R$ 120,00 | 0 | 10/10/2026 | Mensal | Bloqueio do registro com a mensagem: "A quantidade de parcelas deve ser entre 1 e 12." |
+| **TC-07** | Caso de Erro (Data Retroativa) | R$ 100,00 | 2 | 01/01/2025 | Mensal | Bloqueio do registro com a mensagem: "A data do primeiro vencimento não pode ser anterior à data atual." |
+
+---
+
+## 7. Critérios de Aceite (Teste dos Três Dedos)
+
+### Cenário 1: Registro de venda com divisão desigual de centavos
+- **Dado** que a revendedora preenche uma venda no valor de R$ 100,00 em 3 parcelas mensais, com primeiro vencimento em 15/10/2026 para a cliente "Ana Souza",
+- **Quando** a revendedora confirma o cadastro da venda,
+- **Então** o sistema exibe a primeira parcela no valor de R$ 33,34 com vencimento em 15/10/2026,
+- **E** exibe a segunda parcela no valor de R$ 33,33 com vencimento em 15/11/2026,
+- **E** exibe a terceira parcela no valor de R$ 33,33 com vencimento em 15/12/2026,
+- **E** exibe o saldo devedor total de R$ 100,00 com as três parcelas no estado "Pendente".
+
+### Cenário 2: Atualização do estado de parcela por vencimento
+- **Dado** que existe uma parcela no estado "Pendente" com data de vencimento em 01/10/2026,
+- **Quando** a revendedora acessa a visualização da venda em 02/10/2026,
+- **Então** o sistema exibe o estado dessa parcela como "Atrasada".
+
+### Cenário 3: Confirmação de pagamento de parcela
+- **Dado** que uma parcela de R$ 50,00 com vencimento em 10/10/2026 está com o estado "Atrasada",
+- **Quando** a revendedora seleciona a ação de confirmar o pagamento dessa parcela,
+- **Então** o sistema altera o estado da parcela para "Paga",
+- **E** subtrai R$ 50,00 do saldo devedor total da venda.
+
+### Cenário 4: Geração e acionamento da mensagem de cobrança
+- **Dado** que existe uma parcela de número 2 de 3, no valor de R$ 33,33, com vencimento em 15/11/2026 para a cliente "Carla Dias", cujo telefone é 64999991111, referente ao item "Batom Matte",
+- **Quando** a revendedora aciona a opção de cobrança dessa parcela,
+- **Então** o sistema gera o link direcionado para `https://wa.me/5564999991111` contendo o texto:
+  `"Olá, Carla Dias! Passando para lembrar da parcela 2/3 da sua compra (Batom Matte), no valor de R$ 33,33, com vencimento em 15/11/2026. Posso te enviar a chave PIX?"`.
+
+---
+
+## 8. Restrições
+
+1. A interface de operação deve operar em telas com largura mínima de 360 pixels (resolução de smartphones).
+2. Nenhuma mensagem ou dado de cliente pode ser compartilhado com terceiros sem ação direta da revendedora.
+3. As operações de registro de venda, cálculo e marcação de pagamento não podem depender de conectividade com serviços externos além do provedor do próprio sistema.
+
+---
+
+## 9. Decisões de Fechamento de Ambiguidades
+
+| Ambiguidade Encontrada | Decisão Adotada | Justificativa |
+| :--- | :--- | :--- |
+| **1. Destino da sobra de centavos na divisão de parcelas.** | A sobra de centavos será somada exclusivamente na primeira parcela (RN-01). | Evita dispersão de centavos ao longo do tempo e simplifica a conferência manual das últimas parcelas pela revendedora. |
+| **2. Vencimento mensal em dias que não existem em todos os meses (dias 29, 30 e 31).** | A parcela vence no último dia do mês de destino quando o dia original não existir (RN-02). | Garante que a parcela permaneça no mesmo mês de referência sem saltar para o mês seguinte. |
+| **3. Modo de envio para o WhatsApp (API Oficial vs. Link URI).** | Utilização de links padrão `https://wa.me/` com texto pré-carregado. | Elimina custos recorrentes de API de mensageria, reduz complexidade de autenticação e mantém a revendedora no controle da interação com a cliente. |
+| **4. Comportamento do saldo devedor diante de cancelamento de parcela.** | Parcela paga não pode retornar ao estado pendente sem exclusão da venda inteira na primeira versão. | Evita inconsistências contábeis e divergências de cálculo na primeira versão do produto. |
+
+---
+
+### Resposta à Pergunta de Reconstrução
+
+> **Se o código fosse apagado agora, esta spec seria suficiente para reconstruí-lo?**
+>
+> **Sim.** A especificação define todas as regras matemáticas de partição de valores e centavos, as regras de calendário para datas inexistentes, as transições de estados das parcelas, o leiaute fixo das mensagens de texto, as validações de entrada e todos os limites de negócio, permitindo que qualquer equipe de desenvolvimento reconstrua o comportamento integral do sistema sem margem para suposições.
