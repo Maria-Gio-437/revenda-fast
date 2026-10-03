@@ -19,7 +19,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd .. && npm run lint"
+            "command": "node ../scripts/lint-hook.js"
           }
         ]
       }

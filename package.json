@@ -4,11 +4,9 @@
   "description": "Assistente de bolso para revendedoras autônomas",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Testes passados com sucesso!\"",
+    "test": "node --test tests/parcelas.test.js",
     "lint": "echo \"Lint passou sem problemas!\"",
     "start": "node src/index.js",
     "dev": "node src/index.js"
-  },
-  "dependencies": {},
-  "devDependencies": {}
+  }
 }
